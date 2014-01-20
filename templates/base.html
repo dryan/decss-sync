@@ -1,0 +1,36 @@
+<!doctype HTML>
+<html lang="en">
+    <head>
+        <title>{% block title %}{% end %} | Decss Sync</title>
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css">
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css">
+        <style>
+            body { padding: 70px 0; }
+            #ft .navbar-text { color: #ccc; text-align: center; float: none; }
+            #ft .navbar-text a { color: #ccc; border-bottom: 1px solid #555; }
+        </style>
+    </head>
+    <body>
+        <nav class="navbar navbar-fixed-top navbar-inverse">
+            <div class="container">
+                <a href="/" title="Decss Sync" class="navbar-brand">Decss Sync</a>
+                <ul class="nav navbar-nav pull-right">
+                    {% if user %}
+                        <li><a href="/add/" title="Add a deck">Add a Deck</a></li>
+                        <li><a href="/logout/" title="Log out">Log Out</a></li>
+                    {% else %}
+                        <li><a href="/login/" title="Log in with Twitter"><i class="fa fa-twitter"></i> Log In</a></li>
+                    {% end %}
+                </ul>
+            </div>
+        </nav>
+        <main class="container" id="main">
+        {% block content %}
+            
+        {% end %}
+        </main>
+        <footer id="ft" class="navbar navbar-fixed-bottom navbar-inverse">
+            <p class="small navbar-text">Provided by <a href="http://dryan.com/" title="dryan">dryan</a>. Source code at <a href="https://github.com/dryan/decss-sync" title="Github">Github</a>.</p>
+        </footer>
+    </body>
+</html>

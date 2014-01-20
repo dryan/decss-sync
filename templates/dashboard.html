@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% end %}
+
+{% block content %}
+    <h1>Your Decks</h1>
+    {% if decks %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th scope="column">Name</th>
+                <th scope="column">Deck ID</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for deck in decks %}
+            <tr>
+                <td>{{ deck.name }}</td>
+                <td>{{ deck.uuid }}</td>
+            </tr>            
+        {% end %}
+        </tbody>
+    </table>
+    <p>To enable remote control on a presentation, add the following attributes to your deck element:
+    </p>
+    <ul class="list-unstyled">
+        <li><code>data-sync-server="{{ host }}"</code></li>
+        <li><code>data-id="XXXXX"</code> where XXXXX is the Deck ID from above</li>
+    </ul>
+    {% else %}
+    <p>Why not <a href="/add/" title="Add a deck">add your first deck</a>.</p>
+    {% end %}
+{% end %}

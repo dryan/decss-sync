@@ -1,10 +1,8 @@
 #! /usr/bin/env python
 
-import logging, tornado.ioloop, tornado.web, tornado.websocket, uuid, json, copy, os
+import logging, tornado.ioloop, tornado.web, tornado.websocket, tornado.auth, torndb, json, copy, os, MySQLdb
 from urlparse import urlparse
 from tornado.options import define, options, parse_command_line
-
-ALLOWED_MASTERS =   os.environ.get('DECSS_SYNC_ALLOWED_MASTERS', '').split(',')
 
 define('port', default = 8888, help = 'run on the given port', type = int)
 
@@ -15,23 +13,69 @@ def get_origin_host(request):
     except:
         return ''
 
+class TwitterHandler(tornado.web.RequestHandler, tornado.auth.TwitterMixin):
+    @tornado.web.asynchronous
+    def get(self):
+        if self.get_argument('oauth_token', None):
+            self.get_authenticated_user(self.async_callback(self._on_auth))
+            return
+        self.authenticate_redirect()
+
+    def _on_auth(self, openid):
+        if not openid:
+            raise tornado.web.HTTPError(500, 'Twitter auth failed')
+
+        user    =   self.application.db.get('SELECT * FROM `users` WHERE `username`=%s', openid.get('access_token').get('screen_name'))
+        if user is None:
+            self.application.db.execute('INSERT INTO `users` (username, access_key, access_token) VALUES (%s, %s, %s)', openid.get('access_token').get('screen_name'), openid.get('access_token').get('key'), openid.get('access_token').get('secret'))
+            user    =   self.application.db.get('SELECT * FROM `users` WHERE `username`=%s', openid.get('access_token').get('screen_name'))
+        self.set_secure_cookie('decss_user', user.get('username'))
+        return self.redirect('/')
+
+class AuthUserHandler(tornado.web.RequestHandler):
+    user    =   None
+    _cached =   False # used to make sure we only hit the db once per request
+
+    def get_current_user(self):
+        if not self._cached and self.get_secure_cookie('decss_user', None):
+            self.user   =   self.application.db.get('SELECT * FROM `users` WHERE `username`=%s', self.get_secure_cookie('decss_user'))
+        self._cached    =   True
+        return self.user
+
 class Application(tornado.web.Application):
     def __init__(self):
         handlers    =   [
-            (r'/', MainHandler),
+            (r'/', MainHander),
+            (r'/add/', DeckHandler),
+            (r'/socket/', SocketHandler),
             (r'/health-check/', HealthCheck),
+            (r'/login/', TwitterHandler),
+            (r'/logout/', LogoutHandler),
         ]
         settings    =   {
-            'template_path':    os.path.join(os.path.dirname(__file__), "templates"),
-            'xsrf_cookies':     False
+            'template_path':            os.path.join(os.path.dirname(__file__), "templates"),
+            'xsrf_cookies':             True,
+            'twitter_consumer_key':     os.environ.get('DECSS_SYNC_TWITTER_API_KEY', None),
+            'twitter_consumer_secret':  os.environ.get('DECSS_SYNC_TWITTER_API_SECRET', None),
+            'cookie_secret':            os.environ.get('DECSS_SYNC_COOKIE_SECRET')
         }
+        self.login_url  =   '/login/'
+        self.db         =   torndb.Connection(
+            os.environ.get('DECSS_SYNC_DATABASE_HOST'),
+            os.environ.get('DECSS_SYNC_DATABASE_NAME'),
+            os.environ.get('DECSS_SYNC_DATABASE_USER'),
+            os.environ.get('DECSS_SYNC_DATABASE_PASSWORD')
+        )
         tornado.web.Application.__init__(self, handlers, **settings)
+
+    def check_owner(self, user, deck_id):
+        return user and self.db.get('SELECT * FROM `decks` WHERE `uuid`=%s AND `owner`=%s', deck_id, user.get('id'))
 
 class HealthCheck(tornado.web.RequestHandler):
     def get(self):
         self.render('health-check.json')
 
-class MainHandler(tornado.websocket.WebSocketHandler):
+class SocketHandler(tornado.websocket.WebSocketHandler, AuthUserHandler):
     waiters     =   set()
     cache       =   []
     cache_size  =   200
@@ -39,11 +83,11 @@ class MainHandler(tornado.websocket.WebSocketHandler):
 
     def open(self):
         logging.info('%d waiters open' % (len(self.waiters) + 1))
-        self.id =   str(uuid.uuid4())
-        MainHandler.waiters.add(self)
+        self.id =   os.urandom(16).encode('hex')
+        SocketHandler.waiters.add(self)
 
     def on_close(self):
-        MainHandler.waiters.remove(self)
+        SocketHandler.waiters.remove(self)
 
     @classmethod
     def update_cache(cls, message):
@@ -54,9 +98,18 @@ class MainHandler(tornado.websocket.WebSocketHandler):
 
     @classmethod
     def send_updates(cls, message):
-        logging.info('Sending message to %d waiters' % len(cls.waiters))
         for waiter in cls.waiters:
-            if waiter.id != message.get('sender'):
+            if message.get('type', '') == 'sync' and waiter.id != message.get('sender'): 
+                logging.info('Sending sync message to %d waiters' % (len(cls.waiters) - 1))
+                # this is a sync message and the waiter is not the sender
+                try:
+                    msg     =   copy.copy(message)
+                    del(msg['sender'])
+                    waiter.write_message(msg)
+                except:
+                    logging.error('Error sending message', exc_info = True)
+            elif message.get('type', '') == 'pong' and waiter.id == message.get('sender'):
+                logging.info('Sending pong message to %s' % message.get('sender'))
                 try:
                     msg     =   copy.copy(message)
                     del(msg['sender'])
@@ -66,12 +119,56 @@ class MainHandler(tornado.websocket.WebSocketHandler):
 
     def on_message(self, message):
         logging.info('got message %r from %r' % (message, get_origin_host(self.request)))
-        if get_origin_host(self.request) in ALLOWED_MASTERS:
-            # this is a message from the control deck
-            message             =   json.loads(message)
-            message['sender']   =   self.id
-            MainHandler.update_cache(message)
-            MainHandler.send_updates(message)
+        message =   json.loads(message)
+        user    =   self.get_current_user()
+        if message.get('type', '') == 'sync' and self.application.check_owner(user, message.get('id', 0)):
+                # this is a message from the owner
+                message['sender']   =   self.id
+                SocketHandler.update_cache(message)
+                SocketHandler.send_updates(message)
+        elif message.get('type', '') == 'ping':
+            # this user is the owner, send an ack back to grant control if this is the owner
+            message     =   {
+                'type':     'pong',
+                'sender':   self.id,
+                'auth':     bool(self.application.check_owner(user, message.get('id', 0)))
+            }
+            SocketHandler.update_cache(message)
+            SocketHandler.send_updates(message)
+
+
+class MainHander(AuthUserHandler):
+    def get(self):
+        user = self.get_current_user()
+        if user:
+            self.render('dashboard.html', user = user, decks = self.application.db.query('SELECT * FROM `decks` WHERE `owner`=%s ORDER BY `id`', user.get('id')), host = self.request.host)
+        else:
+            self.render('home.html', user = user)
+
+class DeckHandler(AuthUserHandler):
+    def get(self):
+        user    =   self.get_current_user()
+        if not user:
+            return self.redirect('/')
+        self.render('deck-form.html', user = user, errors = False)
+
+    def post(self):
+        # if not self.check_xsrf_cookie():
+        #     raise tornado.web.HTTPError(403, 'Access Denied')
+        user    =   self.get_current_user()
+        if not user:
+            return self.redirect('/')
+        name    =   MySQLdb.escape_string(self.get_argument('name', ''))
+        if not name:
+            self.render('deck-form.html', errors = True)
+            return
+        self.application.db.execute('INSERT INTO `decks` (name, owner, uuid) VALUES (%s, %s, %s)', name, user.get('id'), os.urandom(16).encode('hex'))
+        return self.redirect('/')
+
+class LogoutHandler(AuthUserHandler):
+    def get(self):
+        self.clear_cookie('decss_user')
+        return self.redirect('/')
 
 def main():
     parse_command_line()
