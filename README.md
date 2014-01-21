@@ -18,6 +18,7 @@ The following environment variables are required:
 For the Twitter login to work, [setup a new Twitter app](https://dev.twitter.com/apps/new).
 
 DECSS_SYNC_TWITTER_API_KEY: set this to the Consumer Key from your new app
+
 DECSS_SYNC_TWITTER_API_SECRET: set this to the Consumer Secret from your new app
 
 ### Database
@@ -25,8 +26,11 @@ DECSS_SYNC_TWITTER_API_SECRET: set this to the Consumer Secret from your new app
 A MySQL database is required. The `schema.sql` file will setup the database schema.
 
 DECSS_SYNC_DATABASE_HOST
+
 DECSS_SYNC_DATABASE_NAME
+
 DECSS_SYNC_DATABASE_USER
+
 DECSS_SYNC_DATABASE_PASSWORD
 
 ### Secure Cookies
