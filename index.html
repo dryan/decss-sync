@@ -38,7 +38,33 @@
 
 <p>For help with running tornado under nginx, see <a href="http://stackoverflow.com/questions/14749655/setting-up-a-tornado-web-service-in-production-with-nginx-reverse-proxy">http://stackoverflow.com/questions/14749655/setting-up-a-tornado-web-service-in-production-with-nginx-reverse-proxy</a>.</p>
 
-<p>To setup which host domains are allowed to control presentations, set an environment variable of DECSS_SYNC_ALLOWED_MASTERS to a comma-separated list of domain names.</p>
+<h2>
+<a name="configuration" class="anchor" href="#configuration"><span class="octicon octicon-link"></span></a>Configuration</h2>
+
+<p>The following environment variables are required:</p>
+
+<h3>
+<a name="twitter-login" class="anchor" href="#twitter-login"><span class="octicon octicon-link"></span></a>Twitter login</h3>
+
+<p>For the Twitter login to work, <a href="https://dev.twitter.com/apps/new">setup a new Twitter app</a>.</p>
+
+<p>DECSS_SYNC_TWITTER_API_KEY: set this to the Consumer Key from your new app
+DECSS_SYNC_TWITTER_API_SECRET: set this to the Consumer Secret from your new app</p>
+
+<h3>
+<a name="database" class="anchor" href="#database"><span class="octicon octicon-link"></span></a>Database</h3>
+
+<p>A MySQL database is required. The <code>schema.sql</code> file will setup the database schema.</p>
+
+<p>DECSS_SYNC_DATABASE_HOST
+DECSS_SYNC_DATABASE_NAME
+DECSS_SYNC_DATABASE_USER
+DECSS_SYNC_DATABASE_PASSWORD</p>
+
+<h3>
+<a name="secure-cookies" class="anchor" href="#secure-cookies"><span class="octicon octicon-link"></span></a>Secure Cookies</h3>
+
+<p>DECSS_SYNC_COOKIE_SECRET: set this to a good psuedo-random string</p>
       </section>
     </div>
 
