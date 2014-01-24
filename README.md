@@ -35,4 +35,4 @@ DECSS_SYNC_DATABASE_PASSWORD
 
 ### Secure Cookies
 
-DECSS_SYNC_COOKIE_SECRET: set this to a good psuedo-random string
+DECSS_SYNC_COOKIE_SECRET: set this to [a good psuedo-random string](https://www.grc.com/passwords.htm)
