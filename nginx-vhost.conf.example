@@ -1,0 +1,28 @@
+# An example virtual host configuration for nginx and decss-sync
+# This assumes that you have a base nginx.conf and include this file (or its contents)
+
+upstream decss-sync-server {
+    # Replace 127.0.0.1:9000 with the address of your decsss-sync server  
+    server 127.0.0.1:9000 max_fails=3 fail_timeout=1s;
+}
+
+server {
+  listen        80;
+  server_name   decss-sync.example.com;  # replace with the external DNS name of your server
+
+  charset       utf-8;
+  access_log    /var/log/nginx/decss-sync.access.log;
+  error_log     /var/log/nginx/decss-sync.error.log;
+
+  root          /opt/decss-sync;  # this should point to where the decss-sync code lives on your server
+
+  location  / {
+      # Be careful changing these settings!
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_pass http://decss-sync-server;
+      proxy_http_version 1.1;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+  }
+}
