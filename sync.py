@@ -126,8 +126,8 @@ class SocketHandler(tornado.websocket.WebSocketHandler, AuthUserHandler):
     @classmethod
     def send_updates(cls, message):
         for waiter in cls.waiters:
-            if message.get('type', '') == 'sync' and waiter.id != message.get('sender'): 
-                logging.info('Sending sync message to %d waiters' % (len(cls.waiters) - 1))
+            if message.get('type', '') == 'sync' and waiter.id != message.get('sender') and waiter.deck_id == message.get('id', 0): 
+                logging.info('Sending sync message to waiter %s for deck %s' % (message.get('sender'), waiter.deck_id))
                 # this is a sync message and the waiter is not the sender
                 try:
                     msg     =   copy.copy(message)
