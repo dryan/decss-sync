@@ -80,14 +80,41 @@ class SocketHandler(tornado.websocket.WebSocketHandler, AuthUserHandler):
     cache       =   []
     cache_size  =   200
     id          =   None
+    deck_id     =   None
+    is_owner    =   False
 
     def open(self):
         logging.info('%d waiters open' % (len(self.waiters) + 1))
         self.id =   os.urandom(16).encode('hex')
-        SocketHandler.waiters.add(self)
+        SocketHandler.add_waiter(self)
 
     def on_close(self):
-        SocketHandler.waiters.remove(self)
+        SocketHandler.remove_waiter(self)
+
+    @classmethod
+    def add_waiter(cls, waiter):
+        cls.waiters.add(waiter)
+        if waiter.deck_id:
+            SocketHandler.update_viewer_count(waiter.deck_id)
+
+    @classmethod
+    def remove_waiter(cls, waiter):
+        cls.waiters.remove(waiter)
+        if waiter.deck_id:
+            SocketHandler.update_viewer_count(waiter.deck_id)
+
+    @classmethod
+    def update_viewer_count(cls, deck_id = None):
+        viewers =   0
+        for waiter in cls.waiters:
+            if waiter.deck_id == deck_id:
+                viewers +=  1
+        message =   {
+            'type':     'viewers',
+            'viewers':  viewers
+        }
+        SocketHandler.update_cache(message)
+        SocketHandler.send_updates(message)
 
     @classmethod
     def update_cache(cls, message):
@@ -116,6 +143,12 @@ class SocketHandler(tornado.websocket.WebSocketHandler, AuthUserHandler):
                     waiter.write_message(msg)
                 except:
                     logging.error('Error sending message', exc_info = True)
+            elif message.get('type', '') == 'viewers' and waiter.is_owner:
+                logging.info('Sending viewers message to %s' % waiter.id)
+                try:
+                    waiter.write_message(message)
+                except:
+                    logging.error('Error sending message', exc_info = True)
 
     def on_message(self, message):
         logging.info('got message %r from %r' % (message, get_origin_host(self.request)))
@@ -127,14 +160,17 @@ class SocketHandler(tornado.websocket.WebSocketHandler, AuthUserHandler):
                 SocketHandler.update_cache(message)
                 SocketHandler.send_updates(message)
         elif message.get('type', '') == 'ping':
-            # this user is the owner, send an ack back to grant control if this is the owner
-            message     =   {
+            # this user just connected, send an ack back to grant control if this is the owner
+            self.deck_id    =   message.get('id', 0)
+            self.is_owner   =   bool(self.application.check_owner(user, self.deck_id))
+            message         =   {
                 'type':     'pong',
                 'sender':   self.id,
-                'auth':     bool(self.application.check_owner(user, message.get('id', 0)))
+                'auth':     self.is_owner
             }
             SocketHandler.update_cache(message)
             SocketHandler.send_updates(message)
+            SocketHandler.update_viewer_count(self.deck_id)
 
 
 class MainHander(AuthUserHandler):
