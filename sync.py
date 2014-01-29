@@ -103,7 +103,8 @@ class SocketHandler(tornado.websocket.WebSocketHandler, AuthUserHandler):
                 viewers +=  1
         message =   {
             'type':     'viewers',
-            'viewers':  viewers
+            'viewers':  viewers,
+            'deck_id':  deck_id,
         }
         SocketHandler.update_cache(message)
         SocketHandler.send_updates(message)
@@ -135,7 +136,7 @@ class SocketHandler(tornado.websocket.WebSocketHandler, AuthUserHandler):
                     waiter.write_message(msg)
                 except:
                     logging.error('Error sending message', exc_info = True)
-            elif message.get('type', '') == 'viewers' and waiter.is_owner:
+            elif message.get('type', '') == 'viewers' and waiter.is_owner and waiter.deck_id == message.get('deck_id', 0):
                 logging.info('Sending viewers message to %s' % waiter.id)
                 try:
                     waiter.write_message(message)
