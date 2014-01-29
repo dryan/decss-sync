@@ -99,7 +99,10 @@ class SocketHandler(tornado.websocket.WebSocketHandler, AuthUserHandler):
 
     @classmethod
     def remove_waiter(cls, waiter):
-        cls.waiters.remove(waiter)
+        try:
+            cls.waiters.remove(waiter)
+        except KeyError:
+            pass
         if waiter.deck_id:
             SocketHandler.update_viewer_count(waiter.deck_id)
 
