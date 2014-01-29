@@ -86,25 +86,14 @@ class SocketHandler(tornado.websocket.WebSocketHandler, AuthUserHandler):
     def open(self):
         logging.info('%d waiters open' % (len(self.waiters) + 1))
         self.id =   os.urandom(16).encode('hex')
-        SocketHandler.add_waiter(self)
+        SocketHandler.waiters.add(self)
+        if self.deck_id:
+            SocketHandler.update_viewer_count(self.deck_id)
 
     def on_close(self):
-        SocketHandler.remove_waiter(self)
-
-    @classmethod
-    def add_waiter(cls, waiter):
-        cls.waiters.add(waiter)
-        if waiter.deck_id:
-            SocketHandler.update_viewer_count(waiter.deck_id)
-
-    @classmethod
-    def remove_waiter(cls, waiter):
-        try:
-            cls.waiters.remove(waiter)
-        except KeyError:
-            pass
-        if waiter.deck_id:
-            SocketHandler.update_viewer_count(waiter.deck_id)
+        SocketHandler.waiters.remove(self)
+        if self.deck_id:
+            SocketHandler.update_viewer_count(self.deck_id)
 
     @classmethod
     def update_viewer_count(cls, deck_id = None):
