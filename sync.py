@@ -136,7 +136,7 @@ class SocketHandler(tornado.websocket.WebSocketHandler, AuthUserHandler):
                 except:
                     logging.error('Error sending message', exc_info = True)
             elif message.get('type', '') == 'pong' and waiter.id == message.get('sender'):
-                logging.info('Sending pong message to %s' % message.get('sender'))
+                logging.info('Sending pong message to %s for deck %s' % (message.get('sender'), waiter.deck_id))
                 try:
                     msg     =   copy.copy(message)
                     del(msg['sender'])
