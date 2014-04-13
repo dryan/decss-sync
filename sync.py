@@ -171,9 +171,9 @@ class MainHander(AuthUserHandler):
     def get(self):
         user = self.get_current_user()
         if user:
-            self.render('dashboard.html', user = user, decks = self.application.db.query('SELECT * FROM `decks` WHERE `owner`=%s ORDER BY `id`', user.get('id')), host = self.request.host)
+            self.render('dashboard.html', user = user, decks = self.application.db.query('SELECT * FROM `decks` WHERE `owner`=%s ORDER BY `id`', user.get('id')), host = self.request.host, segmentio_write_key = self.application.settings.get('segmentio_write_key', None))
         else:
-            self.render('home.html', user = user)
+            self.render('home.html', user = user, segmentio_write_key = self.application.settings.get('segmentio_write_key', None))
 
 class DeckHandler(AuthUserHandler):
     def get(self):
