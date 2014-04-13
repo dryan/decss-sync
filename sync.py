@@ -57,7 +57,8 @@ class Application(tornado.web.Application):
             'xsrf_cookies':             True,
             'twitter_consumer_key':     os.environ.get('DECSS_SYNC_TWITTER_API_KEY', None),
             'twitter_consumer_secret':  os.environ.get('DECSS_SYNC_TWITTER_API_SECRET', None),
-            'cookie_secret':            os.environ.get('DECSS_SYNC_COOKIE_SECRET')
+            'cookie_secret':            os.environ.get('DECSS_SYNC_COOKIE_SECRET'),
+            'segmentio_write_key':      os.environ.get('DECSS_SYNC_SEGMENTIO_WRITE_KEY', None),
         }
         self.login_url  =   '/login/'
         self.db         =   torndb.Connection(
