@@ -1,10 +1,23 @@
 #! /usr/bin/env python
 
-import logging, tornado.ioloop, tornado.web, tornado.websocket, tornado.auth, torndb, json, copy, os, MySQLdb
+from __future__ import unicode_literals
+
+import logging
+import tornado.ioloop
+import tornado.web
+import tornado.websocket
+import tornado.auth
+import torndb
+import json
+import copy
+import os
+import MySQLdb
 from urlparse import urlparse
 from tornado.options import define, options, parse_command_line
+import json
 
 define('port', default = 8888, help = 'run on the given port', type = int)
+config = json.load(open('config.json', 'r'))
 
 def get_origin_host(request):
     uri     =   urlparse(request.headers.get('Origin', ''))
@@ -55,17 +68,17 @@ class Application(tornado.web.Application):
         settings    =   {
             'template_path':            os.path.join(os.path.dirname(__file__), "templates"),
             'xsrf_cookies':             True,
-            'twitter_consumer_key':     os.environ.get('DECSS_SYNC_TWITTER_API_KEY', None),
-            'twitter_consumer_secret':  os.environ.get('DECSS_SYNC_TWITTER_API_SECRET', None),
-            'cookie_secret':            os.environ.get('DECSS_SYNC_COOKIE_SECRET'),
-            'segmentio_write_key':      os.environ.get('DECSS_SYNC_SEGMENTIO_WRITE_KEY', None),
+            'twitter_consumer_key':     config.get('twitter', {}).get('key', None),
+            'twitter_consumer_secret':  config.get('twitter', {}).get('secret', None),
+            'cookie_secret':            config['secret_key'],
+            'segmentio_write_key':      config.get('segment', {}).get('key', None),
         }
         self.login_url  =   '/login/'
         self.db         =   torndb.Connection(
-            os.environ.get('DECSS_SYNC_DATABASE_HOST'),
-            os.environ.get('DECSS_SYNC_DATABASE_NAME'),
-            os.environ.get('DECSS_SYNC_DATABASE_USER'),
-            os.environ.get('DECSS_SYNC_DATABASE_PASSWORD')
+            config['database']['host'],
+            config['database']['name'],
+            config['database']['user'],
+            config['database']['password']
         )
         tornado.web.Application.__init__(self, handlers, **settings)
 
@@ -120,7 +133,7 @@ class SocketHandler(tornado.websocket.WebSocketHandler, AuthUserHandler):
     @classmethod
     def send_updates(cls, message):
         for waiter in cls.waiters:
-            if message.get('type', '') == 'sync' and waiter.id != message.get('sender') and waiter.deck_id == message.get('id', 0): 
+            if message.get('type', '') == 'sync' and waiter.id != message.get('sender') and waiter.deck_id == message.get('id', 0):
                 logging.info('Sending sync message to waiter %s for deck %s' % (message.get('sender'), waiter.deck_id))
                 # this is a sync message and the waiter is not the sender
                 try:
@@ -208,4 +221,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

@@ -1,0 +1,16 @@
+{
+  "secret_key": "randomly generated string",
+  "database": {
+    "host": "",
+    "name": "",
+    "user": "",
+    "password": ""
+  },
+  "twitter": {
+    "key": "",
+    "secret": ""
+  },
+  "segment": {
+    "key": ""
+  }
+}
