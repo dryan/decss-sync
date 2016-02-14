@@ -213,10 +213,11 @@ class LogoutHandler(AuthUserHandler):
         self.clear_cookie('decss_user')
         return self.redirect('/')
 
+application = Application()
+
 def main():
     parse_command_line()
-    app     =   Application()
-    app.listen(options.port)
+    application.listen(options.port)
     tornado.ioloop.IOLoop.instance().start()
 
 if __name__ == '__main__':
