@@ -179,6 +179,9 @@ class SocketHandler(tornado.websocket.WebSocketHandler, AuthUserHandler):
             SocketHandler.send_updates(message)
             SocketHandler.update_viewer_count(self.deck_id)
 
+    def check_origin(self, origin):
+        return True
+
 
 class MainHander(AuthUserHandler):
     def get(self):
