@@ -193,7 +193,7 @@ class DeckHandler(AuthUserHandler):
         user    =   self.get_current_user()
         if not user:
             return self.redirect('/')
-        self.render('deck-form.html', user = user, errors = False)
+        self.render('deck-form.html', user=user, errors=False, segmentio_write_key = self.application.settings.get('segmentio_write_key', None))
 
     def post(self):
         # if not self.check_xsrf_cookie():
@@ -203,7 +203,7 @@ class DeckHandler(AuthUserHandler):
             return self.redirect('/')
         name    =   MySQLdb.escape_string(self.get_argument('name', ''))
         if not name:
-            self.render('deck-form.html', errors = True)
+            self.render('deck-form.html', user=user, errors=True, segmentio_write_key = self.application.settings.get('segmentio_write_key', None))
             return
         self.application.db.execute('INSERT INTO `decks` (name, owner, uuid) VALUES (%s, %s, %s)', name, user.get('id'), os.urandom(16).encode('hex'))
         return self.redirect('/')
